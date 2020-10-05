@@ -1,21 +1,11 @@
-let changeColor = document.getElementById('changeColor');
 var bkg = chrome.extension.getBackgroundPage();
 var bookmarks = [];
 var $tree = $('#tree1');
 
 chrome.storage.sync.get('color', function (data) {
-    changeColor.style.backgroundColor = data.color;
-    changeColor.setAttribute('value', data.color);
+    // changeColor.style.backgroundColor = data.color;
+    // changeColor.setAttribute('value', data.color);
 });
-
-changeColor.onclick = function (element) {
-    let color = element.target.value;
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        chrome.tabs.executeScript(
-            tabs[0].id,
-            { code: 'document.body.style.backgroundColor = "' + color + '";' });
-    });
-};
 
 window.addEventListener('load', init, false);
 
@@ -98,6 +88,9 @@ function displayBookmarks(bookmarks) {
         data: bookmarks,
         dragAndDrop: true,
         // saveState: true
+        // autoOpen: 0,
+        closedIcon: $('<i class="fas fa-folder-plus"></i>'),
+        openedIcon: $('<i class="fas fa-folder-minus"></i>')
     });
 };
 
@@ -107,9 +100,9 @@ $tree.on(
         event.preventDefault();
         var node = event.node;
         if (isFolder(node)) {
-            closeOpenNodes(node);
+            // closeOpenNodes(node);
             $tree.tree('toggle', node);
-            $tree.tree('addToSelection', node, false);
+            // $tree.tree('addToSelection', node, false);
         } else {
             alert(node.url);
         }
@@ -119,7 +112,9 @@ $tree.on(
 $tree.on(
     'tree.open',
     function(e) {
-        closeOpenNodes(e.node);
+        if (!$tree.tree('isDragging')) {
+            closeOpenNodes(e.node);
+        }
         $tree.tree('addToSelection', e.node, false);
     }
 );
@@ -135,7 +130,7 @@ function closeOpenNodes(toggleNode) {
     var openNodes = $tree.tree('getSelectedNodes');
     for (var i = 0; i < openNodes.length; i++) {
         var openNode = openNodes[i];
-        if (toggleNode.id != openNode.id && /*toggleNode.parentId != openNode.id &&*/ toggleNode.parentId == openNode.parentId) {
+        if (toggleNode.id != openNode.id && toggleNode.parentId == openNode.parentId) {
             $tree.tree('closeNode', openNode);
             $tree.tree('removeFromSelection', openNode);
             closeOpenChildNodes(openNode.children);
