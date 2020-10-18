@@ -3,7 +3,7 @@
 		throw "Error jqTree is not loaded.";
 	}
 
-	$.fn.jqTreeContextMenu = function (menuElement, callbacks) {
+	$.fn.jqTreeContextMenu = function (menuCallback, callbacks) {
 		//
 		// TODO:
 		// * Make sure the useContextMenu option is set in jqTree, either complain or set it automatically
@@ -12,14 +12,10 @@
 		var self = this;
 		var $el = this;
 
-		// The jQuery object of the menu div.
-		var $menuEl = menuElement;
+		var $menuEl;
 		
 		// This hash holds all menu items that should be disabled for a specific node.
 		var nodeToDisabledMenuItems = {};
-		
-		// Hide the menu div.
-		$menuEl.hide();
 
 		// Disable system context menu from beeing displayed.
 		$el.bind("contextmenu", function (e) { 
@@ -29,6 +25,13 @@
 
 		// Handle the contextmenu event sent from jqTree when user clicks right mouse button.
 		$el.bind('tree.contextmenu', function (event) {
+			// Hide the menu div if it was initialized.
+			if (typeof $menuEl !== 'undefined') {
+				$menuEl.hide();
+			}
+			// The jQuery object of the menu div.
+			$menuEl = menuCallback(event.node);
+
 			var x = event.click_event.pageX;
 			var y = event.click_event.pageY;
 			var yPadding = 5;

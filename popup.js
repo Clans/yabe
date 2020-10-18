@@ -16,14 +16,17 @@ function init() {
 
     loadBookmarks();
 
-    var menu = $tree.jqTreeContextMenu($('#menu'), {
+    var menu = $tree.jqTreeContextMenu((node) => {
+        return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
+    }, {
         "edit": function (node) { alert('Edit node: ' + node.name); },
         "delete": function (node) { alert('Delete node: ' + node.name); },
         "add": function (node) { alert('Add node: ' + node.name); }
     });
 
-    menu.disable('Bookmarks Bar', ['edit']);
-    menu.disable('Other Bookmarks', ['edit']);
+    menu.disable('Bookmarks Bar', ['edit', 'delete']);
+    menu.disable('Other Bookmarks', ['edit', 'delete']);
+    menu.disable('Mobile Bookmarks', ['edit', 'delete']);
 };
 
 function loadBookmarks() {
