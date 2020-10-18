@@ -2,24 +2,27 @@
 <html>
 
 <head>
-  <style>
-    button {
-      height: 30px;
-      width: 30px;
-      outline: none;
-    }
-  </style>
-  <link rel="stylesheet" href="/css/jqtree.css">
-  <script defer src="fontawesome.min.js"></script>
+  <link rel="stylesheet" href="css/jqtree.css">
 </head>
 
 <body>
   <div id="scroll-container">
     <div id="tree1"></div>
   </div>
-  <script src="jquery-3.5.1.min.js"></script>
-  <script src="tree.jquery-1.5.1.js"></script>
+  <div id="editdialog"></div>
+
+  <ul id="menu" class="context-menu">
+    <li><a href="#add">Add</a></li>
+    <li><a href="#edit">Edit</a></li>
+    <li class="divider"></li>
+    <li><a href="#delete">Delete</a></li>
+  </ul>
+
+  <script defer src="scripts/fontawesome.min.js"></script>
+  <script src="scripts/jquery-3.5.1.min.js"></script>
+  <script src="scripts/tree.jquery-1.5.1.js"></script>
   <script src="popup.js"></script>
+  <script src="scripts/jqTreeContextMenu.js"></script>
 </body>
 
 </html>

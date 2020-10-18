@@ -1,6 +1,7 @@
 var bkg = chrome.extension.getBackgroundPage();
 var bookmarks = [];
 var $tree = $('#tree1');
+var $bookmarkContextMenu = $('bookmark-context-menu');
 
 chrome.storage.sync.get('color', function (data) {
     // changeColor.style.backgroundColor = data.color;
@@ -12,85 +13,57 @@ window.addEventListener('load', init, false);
 function init() {
     document.body.style.height = 600 + 'px';
     document.body.style.width = 350 + 'px';
-};
 
-(function(window) {
     loadBookmarks();
-})(window);
+
+    var menu = $tree.jqTreeContextMenu($('#menu'), {
+        "edit": function (node) { alert('Edit node: ' + node.name); },
+        "delete": function (node) { alert('Delete node: ' + node.name); },
+        "add": function (node) { alert('Add node: ' + node.name); }
+    });
+
+    menu.disable('Bookmarks Bar', ['edit']);
+    menu.disable('Other Bookmarks', ['edit']);
+};
 
 function loadBookmarks() {
     chrome.bookmarks.getTree(function(tree) {
         var data = tree[0].children;
-        // addNodes(data);
-    
         displayBookmarks(data);
     });
 }
 
-function addNodes(data) {
-    for (var i = 0; i < data.length; i++) {
-        var node = data[i];
-        bkg.console.log(node.title);
-        addNode(node);
-    }
-}
-
 function isFolder(node) {
-    return typeof node.url  == 'undefined';
+    return typeof node.url == 'undefined';
 }
-
-function addNode(node) {
-    var folder = {
-        id: node.id,
-        label: node.title,
-        children: []
-    };
-    bookmarks.push(folder);
-    if (isFolder(node)) {
-        addChildrenToFolder(folder, node.children);
-        // addNodes(node.children);
-    }
-}
-
-function addChildrenToFolder(folder, children) {
-    for (var i = 0; i < children.length; i++) {
-        var child = children[i];
-        folder.children.push({
-            id: child.id,
-            label: child.title,
-            children: []
-        })
-        if (isFolder(child)) {
-            bkg.console.log("child: " + child.title);
-            // addChildrenToFolder(child, child.children);
-        }
-    }
-}
-
-var data = [
-    {
-        name: 'node1',
-        children: [
-            { name: 'child1' },
-            { name: 'child2' }
-        ]
-    },
-    {
-        name: 'node2',
-        children: [
-            { name: 'child3' }
-        ]
-    }
-];
 
 function displayBookmarks(bookmarks) {
     $tree.tree({
         data: bookmarks,
         dragAndDrop: true,
         // saveState: true
-        // autoOpen: 0,
+        selectable: false,
+        autoOpen: 0,
         closedIcon: $('<i class="fas fa-folder-plus"></i>'),
-        openedIcon: $('<i class="fas fa-folder-minus"></i>')
+        openedIcon: $('<i class="fas fa-folder-minus"></i>'),
+        onCreateLi: function(node, $li, is_selected) {
+            if (!isFolder(node)) {
+                var favicon = 'chrome://favicon/size/16@2x/' + node.url;
+                $li.find('.jqtree-title').before('<img class="favicon" src="' + favicon + '" width="16" height="16" alt="">');
+            }
+        },
+        onCanMove: function(node) {
+            return node.parent.parent;
+        },
+        onCanMoveTo: function(moved_node, target_node, position) {
+            return target_node.parent.parent && (isFolder(target_node) || position == 'after');
+        },
+        onIsMoveHandle: function($element) {
+            // TODO: add custom UI element to handle drag'n'drop
+            // Only dom elements with 'jqtree-title' class can be used
+            // as move handle.
+            return ($element.is('.jqtree-title'));
+        }
     });
 };
 
@@ -114,6 +87,7 @@ $tree.on(
     function(e) {
         if (!$tree.tree('isDragging')) {
             closeOpenNodes(e.node);
+            $tree.tree('scrollToNode', e.node);
         }
         $tree.tree('addToSelection', e.node, false);
     }
@@ -131,7 +105,7 @@ function closeOpenNodes(toggleNode) {
     for (var i = 0; i < openNodes.length; i++) {
         var openNode = openNodes[i];
         if (toggleNode.id != openNode.id && toggleNode.parentId == openNode.parentId) {
-            $tree.tree('closeNode', openNode);
+            $tree.tree('closeNode', openNode, false);
             $tree.tree('removeFromSelection', openNode);
             closeOpenChildNodes(openNode.children);
         }
@@ -147,7 +121,7 @@ function closeOpenChildNodes(children) {
     for (var i = 0; i < children.length; i++) {
         var child = children[i];
         if (child.is_open) {
-            $tree.tree('closeNode', child);
+            $tree.tree('closeNode', child, false);
             $tree.tree('removeFromSelection', child);
             if (child.children) {
                 closeOpenChildNodes(child.children);

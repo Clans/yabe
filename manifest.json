@@ -2,7 +2,7 @@
     "name": "YABE",
     "version": "0.0.1",
     "description": "Yet Another Bookmarks Extension",
-    "permissions": ["bookmarks", "storage"],
+    "permissions": ["bookmarks", "storage", "chrome://favicon/", "contextMenus"],
     "background": {
         "scripts": ["background.js"],
         "persistent": false
