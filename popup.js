@@ -3,30 +3,55 @@ var bookmarks = [];
 var $tree = $('#tree1');
 var $bookmarkContextMenu = $('bookmark-context-menu');
 
-chrome.storage.sync.get('color', function (data) {
-    // changeColor.style.backgroundColor = data.color;
-    // changeColor.setAttribute('value', data.color);
-});
-
 window.addEventListener('load', init, false);
 
 function init() {
-    document.body.style.height = 600 + 'px';
-    document.body.style.width = 350 + 'px';
+    $tree.on(
+        'tree.click',
+        function(event) {
+            event.preventDefault();
+            var node = event.node;
+            if (isFolder(node)) {
+                $tree.tree('toggle', node);
+            } else {
+                alert(node.url);
+            }
+        }
+    );
+    
+    $tree.on(
+        'tree.open',
+        function(e) {
+            if (!$tree.tree('isDragging')) {
+                closeOpenNodes(e.node);
+                resetHeight(() => {$tree.tree('scrollToNode', e.node)});
+            }
+            $tree.tree('addToSelection', e.node, false);
+        }
+    );
+    
+    $tree.on(
+        'tree.close',
+        function(e) {
+            $tree.tree('removeFromSelection', e.node);
+            closeOpenChildNodes(e.node.children);
+            resetHeight();
+        }
+    );
 
     loadBookmarks();
 
-    var menu = $tree.jqTreeContextMenu((node) => {
-        return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
-    }, {
-        "edit": function (node) { alert('Edit node: ' + node.name); },
-        "delete": function (node) { alert('Delete node: ' + node.name); },
-        "add": function (node) { alert('Add node: ' + node.name); }
-    });
+    // var menu = $tree.jqTreeContextMenu((node) => {
+    //     return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
+    // }, {
+    //     "edit": function (node) { alert('Edit node: ' + node.name); },
+    //     "delete": function (node) { alert('Delete node: ' + node.name); },
+    //     "add": function (node) { alert('Add node: ' + node.name); }
+    // });
 
-    menu.disable('Bookmarks Bar', ['edit', 'delete']);
-    menu.disable('Other Bookmarks', ['edit', 'delete']);
-    menu.disable('Mobile Bookmarks', ['edit', 'delete']);
+    // menu.disable('Bookmarks Bar', ['edit', 'delete']);
+    // menu.disable('Other Bookmarks', ['edit', 'delete']);
+    // menu.disable('Mobile Bookmarks', ['edit', 'delete']);
 };
 
 function loadBookmarks() {
@@ -43,10 +68,8 @@ function isFolder(node) {
 function displayBookmarks(bookmarks) {
     $tree.tree({
         data: bookmarks,
-        dragAndDrop: true,
-        // saveState: true
+        // dragAndDrop: true,
         selectable: false,
-        autoOpen: 0,
         closedIcon: $('<i class="fas fa-folder-plus"></i>'),
         openedIcon: $('<i class="fas fa-folder-minus"></i>'),
         onCreateLi: function(node, $li, is_selected) {
@@ -59,7 +82,11 @@ function displayBookmarks(bookmarks) {
             return node.parent.parent;
         },
         onCanMoveTo: function(moved_node, target_node, position) {
-            return target_node.parent.parent && (isFolder(target_node) || position == 'after');
+            if (isFolder(target_node)) {
+                return position == 'inside';
+            } else {
+                return position == 'after';
+            }
         },
         onIsMoveHandle: function($element) {
             // TODO: add custom UI element to handle drag'n'drop
@@ -68,40 +95,9 @@ function displayBookmarks(bookmarks) {
             return ($element.is('.jqtree-title'));
         }
     });
+    $tree.tree('openNode', $tree.tree('getNodeById', 1), false);
+    resetHeight();
 };
-
-$tree.on(
-    'tree.click',
-    function(event) {
-        event.preventDefault();
-        var node = event.node;
-        if (isFolder(node)) {
-            // closeOpenNodes(node);
-            $tree.tree('toggle', node);
-            // $tree.tree('addToSelection', node, false);
-        } else {
-            alert(node.url);
-        }
-    }
-);
-
-$tree.on(
-    'tree.open',
-    function(e) {
-        if (!$tree.tree('isDragging')) {
-            closeOpenNodes(e.node);
-            $tree.tree('scrollToNode', e.node);
-        }
-        $tree.tree('addToSelection', e.node, false);
-    }
-);
-
-$tree.on(
-    'tree.close',
-    function(e) {
-        $tree.tree('removeFromSelection', e.node);
-    }
-);
 
 function closeOpenNodes(toggleNode) {
     var openNodes = $tree.tree('getSelectedNodes');
@@ -110,7 +106,7 @@ function closeOpenNodes(toggleNode) {
         if (toggleNode.id != openNode.id && toggleNode.parentId == openNode.parentId) {
             $tree.tree('closeNode', openNode, false);
             $tree.tree('removeFromSelection', openNode);
-            closeOpenChildNodes(openNode.children);
+            // closeOpenChildNodes(openNode.children);
         }
 
         if (toggleNode.id == openNode.id) {
@@ -131,4 +127,11 @@ function closeOpenChildNodes(children) {
             }
         }
     }
+}
+
+function resetHeight(callback) {
+    var newHeight = $('#tree1').height();
+    newHeight = newHeight > 600 ? 600 : newHeight + 17;
+    var animationSpeed = newHeight > $('#scroll-container').height() ? 0 : 10;
+    $('#scroll-container').animate({ height: newHeight }, 100, callback ? callback() : '');
 }

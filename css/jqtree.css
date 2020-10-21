@@ -2,6 +2,9 @@ body {
     font: menu;
     margin: 0;
     padding: 0;
+    width: 350px;
+    /* height: 600px; */
+    /* overflow-y: scroll; */
 }
 
 ul.jqtree-tree {
@@ -204,7 +207,7 @@ span.jqtree-dragging {
 }
 
 #scroll-container {
-    height: 600px;
+    /* height: 600px; */
     overflow-y: scroll;
     user-select: none;
 }
