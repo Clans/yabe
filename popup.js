@@ -193,7 +193,7 @@ function loadBookmarks() {
     ];
 
     chrome.bookmarks.getTree(function(tree) {
-        var data = testData;//tree[0].children;
+        var data = tree[0].children;
         displayBookmarks(data);
     });
 }
