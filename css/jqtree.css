@@ -207,8 +207,7 @@ span.jqtree-dragging {
 }
 
 #scroll-container {
-    /* height: 600px; */
-    overflow-y: scroll;
+    overflow-y: auto;
     user-select: none;
 }
 

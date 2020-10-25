@@ -1,5 +1,5 @@
 # yabe
-Yet Another Bookmark Extension
+Yet Another Bookmarks Extension
 
 ```
 Copyright 2020 Dmytro Tarianyk

@@ -14,7 +14,7 @@ function init() {
             if (isFolder(node)) {
                 $tree.tree('toggle', node);
             } else {
-                alert(node.url);
+                chrome.tabs.create({url: node.url, active: !isBackgroundTab(event.click_event.originalEvent)});
             }
         }
     );
@@ -39,7 +39,15 @@ function init() {
         }
     );
 
-    loadBookmarks();
+    $tree.on("auxclick", (event) => {
+        if (event.button === 1) {
+            const node = $tree.tree("getNodeByHtmlElement", event.target);
+    
+            if (node && !isFolder(node)) {
+                chrome.tabs.create({url: node.url, active: false});
+            }
+        }
+    });
 
     // var menu = $tree.jqTreeContextMenu((node) => {
     //     return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
@@ -52,11 +60,140 @@ function init() {
     // menu.disable('Bookmarks Bar', ['edit', 'delete']);
     // menu.disable('Other Bookmarks', ['edit', 'delete']);
     // menu.disable('Mobile Bookmarks', ['edit', 'delete']);
-};
+
+    loadBookmarks();
+}
+
+function isBackgroundTab(event) {
+    return (event.metaKey && event.button == 0) || (event.ctrlKey && event.button == 0);
+}
 
 function loadBookmarks() {
+    var testData = [
+        {
+            title: 'Folder 1', 
+            id: 1, 
+            parentId: 0,
+            children: [
+                { 
+                    title: 'Folder 1', 
+                    id: 111, 
+                    parentId: 1,
+                    children: [
+                        {
+                            title: 'Bookmark 1', 
+                            id: 1111, 
+                            url: "https://example.com", 
+                            parentId: 111
+                        },
+                        {
+                            title: 'Bookmark 2', 
+                            id: 1112, 
+                            url: "https://example.com", 
+                            parentId: 111
+                        },
+                        {
+                            title: 'Bookmark 3', 
+                            id: 1113, 
+                            url: "https://example.com", 
+                            parentId: 111
+                        },
+                        {
+                            title: 'Bookmark 4', 
+                            id: 1114, 
+                            url: "https://example.com", 
+                            parentId: 111
+                        }
+                    ]
+                },
+                { 
+                    title: 'Folder 2', 
+                    id: 112, 
+                    parentId: 1,
+                    children: [
+                        {
+                            title: 'Bookmark 1', 
+                            id: 1121, 
+                            url: "https://example.com", 
+                            parentId: 112
+                        },
+                        {
+                            title: 'Bookmark 2', 
+                            id: 1122, 
+                            url: "https://example.com", 
+                            parentId: 112
+                        }
+                    ]
+                },
+                { 
+                    title: 'Folder 3', 
+                    id: 113, 
+                    parentId: 1,
+                    children: [
+                        {
+                            title: 'Bookmark 1', 
+                            id: 1131, 
+                            url: "https://example.com", 
+                            parentId: 113
+                        },
+                        {
+                            title: 'Bookmark 2', 
+                            id: 1132, 
+                            url: "https://example.com", 
+                            parentId: 113
+                        }
+                    ]
+                },
+                { 
+                    title: 'Bookmark 1', 
+                    id: 114, 
+                    url: "https://example.com", 
+                    parentId: 1 
+                },
+                { 
+                    title: 'Bookmark 2', 
+                    id: 115, 
+                    url: "https://example.com", 
+                    parentId: 1 
+                },
+                { 
+                    title: 'Bookmark 3', 
+                    id: 116, 
+                    url: "https://example.com", 
+                    parentId: 1 
+                }
+            ]
+        },
+        {
+            title: 'Folder 2', 
+            id: 21, 
+            parentId: 0,
+            children: [
+                { 
+                    title: 'Bookmark 1', 
+                    id: 311, 
+                    url: "https://example.com", 
+                    parentId: 21
+                }
+            ]
+        },
+        {
+            title: 'Folder 3', 
+            id: 31, 
+            parentId: 0,
+            children: [
+                { 
+                    title: 'Bookmark 1', 
+                    id: 311, 
+                    url: "https://example.com", 
+                    parentId: 31
+                }
+            ]
+        }
+    ];
+
     chrome.bookmarks.getTree(function(tree) {
-        var data = tree[0].children;
+        var data = testData;//tree[0].children;
         displayBookmarks(data);
     });
 }
@@ -106,7 +243,6 @@ function closeOpenNodes(toggleNode) {
         if (toggleNode.id != openNode.id && toggleNode.parentId == openNode.parentId) {
             $tree.tree('closeNode', openNode, false);
             $tree.tree('removeFromSelection', openNode);
-            // closeOpenChildNodes(openNode.children);
         }
 
         if (toggleNode.id == openNode.id) {
