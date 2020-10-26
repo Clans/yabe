@@ -6,6 +6,14 @@ var $bookmarkContextMenu = $('bookmark-context-menu');
 window.addEventListener('load', init, false);
 
 function init() {
+    // disable middle mouse click scrolling
+    $('body').mousedown((event) => { 
+        if (event.button === 1) {
+            event.preventDefault();
+            return false;
+        }
+    });
+
     $tree.on(
         'tree.click',
         function(event) {
