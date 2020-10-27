@@ -218,10 +218,13 @@ function displayBookmarks(bookmarks) {
         closedIcon: $('<i class="fas fa-folder-plus"></i>'),
         openedIcon: $('<i class="fas fa-folder-minus"></i>'),
         onCreateLi: function(node, $li, is_selected) {
+            var title = node.name;
             if (!isFolder(node)) {
                 var favicon = 'chrome://favicon/size/16@2x/' + node.url;
                 $li.find('.jqtree-title').before('<img class="favicon" src="' + favicon + '" width="16" height="16" alt="">');
+                title += '\n\n' + node.url;
             }
+            $li.find('.jqtree-title').attr({'title': title});
         },
         onCanMove: function(node) {
             return node.parent.parent;
