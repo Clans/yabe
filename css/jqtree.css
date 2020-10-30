@@ -3,8 +3,8 @@ body {
     margin: 0;
     padding: 0;
     width: 350px;
+    background-color: #fff;
     /* height: 600px; */
-    /* overflow-y: scroll; */
 }
 
 ul.jqtree-tree {
@@ -21,7 +21,6 @@ ul.jqtree-tree.jqtree-dnd {
 ul.jqtree-tree ul.jqtree_common {
     list-style: none outside;
     margin-left: 19px;
-    margin-right: 10px;
     margin-bottom: 0;
     padding-left: 0;
     display: block;
@@ -38,7 +37,7 @@ ul.jqtree-tree li.jqtree_common {
 
 ul.jqtree-tree .jqtree-toggler {
     border-bottom: none;
-    color: #333;
+    color: #646464;
     text-decoration: none;
     vertical-align: middle;
 }
@@ -52,7 +51,7 @@ ul.jqtree-tree .jqtree-toggler.jqtree-closed {
 }
 
 ul.jqtree-tree .jqtree-toggler.jqtree-toggler-left {
-    margin-right: 1.0em;
+    margin-right: 10px;
 }
 
 ul.jqtree-tree .jqtree-toggler.jqtree-toggler-right {
@@ -69,7 +68,7 @@ ul.jqtree-tree .jqtree-element {
 ul.jqtree-tree .jqtree-title {
     color: #646464;
     vertical-align: middle;
-    margin-left: 1.5em;
+    margin-left: 26px;
     margin-right: 1em;
     font-size: 14px;
     width: 95%;
@@ -213,6 +212,12 @@ span.jqtree-dragging {
 
 .favicon {
     margin: auto 0;
+    color: #646464;
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .context-menu {
