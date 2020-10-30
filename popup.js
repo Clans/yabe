@@ -1,83 +1,9 @@
 var bkg = chrome.extension.getBackgroundPage();
 var bookmarks = [];
 var $tree = $('#tree1');
-var $bookmarkContextMenu = $('bookmark-context-menu');
+var localStorage = window.localStorage;
 
-window.addEventListener('load', init, false);
-
-function init() {
-    // disable middle mouse click scrolling
-    $('body').mousedown((event) => { 
-        if (event.button === 1) {
-            event.preventDefault();
-            return false;
-        }
-    });
-
-    $tree.on(
-        'tree.click',
-        function(event) {
-            event.preventDefault();
-            var node = event.node;
-            if (isFolder(node)) {
-                $tree.tree('toggle', node);
-            } else {
-                chrome.tabs.create({url: node.url, active: !isBackgroundTab(event.click_event.originalEvent)});
-            }
-        }
-    );
-    
-    $tree.on(
-        'tree.open',
-        function(e) {
-            if (!$tree.tree('isDragging')) {
-                closeOpenNodes(e.node);
-                resetHeight(() => {$tree.tree('scrollToNode', e.node)});
-            }
-            $tree.tree('addToSelection', e.node, false);
-        }
-    );
-    
-    $tree.on(
-        'tree.close',
-        function(e) {
-            $tree.tree('removeFromSelection', e.node);
-            closeOpenChildNodes(e.node.children);
-            resetHeight();
-        }
-    );
-
-    $tree.on("auxclick", (event) => {
-        if (event.button === 1) {
-            const node = $tree.tree("getNodeByHtmlElement", event.target);
-    
-            if (node && !isFolder(node)) {
-                chrome.tabs.create({url: node.url, active: false});
-            }
-        }
-    });
-
-    // var menu = $tree.jqTreeContextMenu((node) => {
-    //     return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
-    // }, {
-    //     "edit": function (node) { alert('Edit node: ' + node.name); },
-    //     "delete": function (node) { alert('Delete node: ' + node.name); },
-    //     "add": function (node) { alert('Add node: ' + node.name); }
-    // });
-
-    // menu.disable('Bookmarks Bar', ['edit', 'delete']);
-    // menu.disable('Other Bookmarks', ['edit', 'delete']);
-    // menu.disable('Mobile Bookmarks', ['edit', 'delete']);
-
-    loadBookmarks();
-}
-
-function isBackgroundTab(event) {
-    return (event.metaKey && event.button == 0) || (event.ctrlKey && event.button == 0);
-}
-
-function loadBookmarks() {
-    var testData = [
+const testData = [
         {
             title: 'Folder 1', 
             id: 1, 
@@ -200,6 +126,75 @@ function loadBookmarks() {
         }
     ];
 
+(function (window) {
+    // disable middle mouse click scrolling
+    $('body').mousedown((event) => { 
+        if (event.button === 1) {
+            event.preventDefault();
+            return false;
+        }
+    });
+
+    $tree.on('tree.click', (event) => {
+            event.preventDefault();
+            var node = event.node;
+            if (isFolder(node)) {
+                $tree.tree('toggle', node);
+            } else {
+                chrome.tabs.create({url: node.url, active: !isBackgroundTab(event.click_event.originalEvent)});
+            }
+        }
+    );
+    
+    $tree.on('tree.open', (event) => {
+            if (!$tree.tree('isDragging')) {
+                closeOpenNodes(event.node);
+                $tree.tree('scrollToNode', event.node)
+            }
+            $tree.tree('addToSelection', event.node, false);
+        }
+    );
+    
+    $tree.on('tree.close', (event) => {
+            $tree.tree('removeFromSelection', event.node);
+            closeOpenChildNodes(event.node.children);
+        }
+    );
+
+    $tree.on('auxclick', (event) => {
+        if (event.button === 1) {
+            const node = $tree.tree('getNodeByHtmlElement', event.target);
+    
+            if (node && !isFolder(node)) {
+                chrome.tabs.create({url: node.url, active: false});
+            }
+        }
+    });
+
+    window.addEventListener('scroll', (event) => {
+        localStorage.scrollTop = $(window).scrollTop();
+    });
+
+    // var menu = $tree.jqTreeContextMenu((node) => {
+    //     return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
+    // }, {
+    //     "edit": function (node) { alert('Edit node: ' + node.name); },
+    //     "delete": function (node) { alert('Delete node: ' + node.name); },
+    //     "add": function (node) { alert('Add node: ' + node.name); }
+    // });
+
+    // menu.disable('Bookmarks Bar', ['edit', 'delete']);
+    // menu.disable('Other Bookmarks', ['edit', 'delete']);
+    // menu.disable('Mobile Bookmarks', ['edit', 'delete']);
+
+    loadBookmarks();
+})(window);
+
+function isBackgroundTab(event) {
+    return (event.metaKey && event.button == 0) || (event.ctrlKey && event.button == 0);
+}
+
+function loadBookmarks() {
     chrome.bookmarks.getTree(function(tree) {
         var data = tree[0].children;
         displayBookmarks(data);
@@ -214,14 +209,21 @@ function displayBookmarks(bookmarks) {
     $tree.tree({
         data: bookmarks,
         // dragAndDrop: true,
+        saveState: true,
         selectable: false,
         closedIcon: $('<i class="fas fa-folder-plus"></i>'),
         openedIcon: $('<i class="fas fa-folder-minus"></i>'),
         onCreateLi: function(node, $li, is_selected) {
+            var title = node.name;
             if (!isFolder(node)) {
                 var favicon = 'chrome://favicon/size/16@2x/' + node.url;
-                $li.find('.jqtree-title').before('<img class="favicon" src="' + favicon + '" width="16" height="16" alt="">');
+                $li.find('.jqtree-title')
+                    .before('<img id="favicon" class="favicon fas fa-globe-americas" alt="">');
+                setTimeout(() => $li.find('#favicon')
+                    .replaceWith('<img class="favicon" src="' + favicon + '" alt="">'), 100);
+                title += '\n\n' + node.url;
             }
+            $li.find('.jqtree-title').attr({'title': title});
         },
         onCanMove: function(node) {
             return node.parent.parent;
@@ -240,8 +242,12 @@ function displayBookmarks(bookmarks) {
             return ($element.is('.jqtree-title'));
         }
     });
-    $tree.tree('openNode', $tree.tree('getNodeById', 1), false);
-    resetHeight();
+
+    // var openNodes = JSON.parse(localStorage.tree).open_nodes;
+    // if (openNodes.length > 0) {
+    //     $tree.tree('scrollToNode', $tree.tree('getNodeById', openNodes[openNodes.length - 1]));
+    // }
+    $('html,body').scrollTop(localStorage.scrollTop);
 };
 
 function closeOpenNodes(toggleNode) {
@@ -271,11 +277,4 @@ function closeOpenChildNodes(children) {
             }
         }
     }
-}
-
-function resetHeight(callback) {
-    var newHeight = $('#tree1').height();
-    newHeight = newHeight > 600 ? 600 : newHeight + 17;
-    var animationSpeed = newHeight > $('#scroll-container').height() ? 0 : 10;
-    $('#scroll-container').animate({ height: newHeight }, 100, callback ? callback() : '');
 }
