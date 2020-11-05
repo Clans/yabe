@@ -32,22 +32,23 @@
 			// The jQuery object of the menu div.
 			$menuEl = menuCallback(event.node);
 
-			var x = event.click_event.pageX;
-			var y = event.click_event.pageY;
+			var xPadding = 18;
 			var yPadding = 5;
-			var xPadding = 5;
+			var nodeHeight = 40;
+			var x = event.node.element.offsetLeft + xPadding;
+			var y = event.node.element.offsetTop + nodeHeight + yPadding;
 			var menuHeight = $menuEl.height();
 			var menuWidth = $menuEl.width();
 			var windowHeight = $(window).height();
 			var windowWidth = $(window).width();
 			
-			if (menuHeight + y + yPadding > windowHeight) {
+			if (menuHeight + y - $(window).scrollTop() > windowHeight) {
 				// Make sure the whole menu is rendered within the viewport. 
-				y = y - menuHeight;
+				y = event.node.element.offsetTop - menuHeight - 3 * yPadding;
 			}
 			if (menuWidth + x + xPadding > windowWidth) {
 				// Make sure the whole menu is rendered within the viewport. 
-				x = x - menuWidth;
+				x = windowWidth - menuWidth - xPadding / 2;
 			}
 
 			// Handle disabling and enabling of menu items on specific nodes.
@@ -75,31 +76,36 @@
 			}
 
 			// Must call show before we set the offset (offset can not be set on display: none elements).
-			$menuEl.show();
+			$menuEl.fadeIn(200);
 
 			$menuEl.offset({ left: x, top: y });
 
-			var dismissContextMenu = function () {
+			var dismissContextMenu = () => {
 				$(document).unbind('click.jqtreecontextmenu');
 				$el.unbind('tree.click.jqtreecontextmenu');
 				$(document).unbind('keydown.jqtreecontextmenu');
+				$(document).unbind('scroll');
 				$menuEl.hide();
 			}
 			// Make it possible to dismiss context menu by clicking somewhere in the document.
-			$(document).bind('click.jqtreecontextmenu', function () {
+			$(document).bind('click.jqtreecontextmenu', () => {
 				dismissContextMenu();
 			});
 
 			// Dismiss context menu if another node in the tree is clicked.
-			$el.bind('tree.click.jqtreecontextmenu', function (e) {
+			$el.bind('tree.click.jqtreecontextmenu', (e) => {
 				dismissContextMenu();
 			});
 
-			$(document).bind('keydown.jqtreecontextmenu', function (e) {
+			$(document).bind('keydown.jqtreecontextmenu', (e) => {
 				if (e.key === "Escape") {
 					e.preventDefault();
 					dismissContextMenu();
 				}
+			});
+
+			$(document).bind('scroll', () => {
+				dismissContextMenu();
 			});
 
 			// Make selection follow the node that was right clicked on.

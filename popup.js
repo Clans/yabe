@@ -175,18 +175,6 @@ const testData = [
         localStorage.scrollTop = $(window).scrollTop();
     });
 
-    // var menu = $tree.jqTreeContextMenu((node) => {
-    //     return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
-    // }, {
-    //     "edit": function (node) { alert('Edit node: ' + node.name); },
-    //     "delete": function (node) { alert('Delete node: ' + node.name); },
-    //     "add": function (node) { alert('Add node: ' + node.name); }
-    // });
-
-    // menu.disable('Bookmarks Bar', ['edit', 'delete']);
-    // menu.disable('Other Bookmarks', ['edit', 'delete']);
-    // menu.disable('Mobile Bookmarks', ['edit', 'delete']);
-
     loadBookmarks();
 })(window);
 
@@ -243,10 +231,18 @@ function displayBookmarks(bookmarks) {
         }
     });
 
-    // var openNodes = JSON.parse(localStorage.tree).open_nodes;
-    // if (openNodes.length > 0) {
-    //     $tree.tree('scrollToNode', $tree.tree('getNodeById', openNodes[openNodes.length - 1]));
-    // }
+    var menu = $tree.jqTreeContextMenu((node) => {
+        return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
+    }, {
+        "edit": function (node) { alert('Edit node: ' + node.name); },
+        "delete": function (node) { alert('Delete node: ' + node.name); },
+        "add": function (node) { alert('Add node: ' + node.name); }
+    });
+
+    menu.disable('Bookmarks Bar', ['edit', 'delete']);
+    menu.disable('Other Bookmarks', ['edit', 'delete']);
+    menu.disable('Mobile Bookmarks', ['edit', 'delete']);
+
     $('html,body').scrollTop(localStorage.scrollTop);
 };
 
