@@ -1,7 +1,20 @@
+const openBookmarksLimit = 8;
+
 var bkg = chrome.extension.getBackgroundPage();
 var bookmarks = [];
-var $tree = $('#tree1');
 var localStorage = window.localStorage;
+var $body = $(document.body);
+var $tree = $('#tree1');
+
+var $cover = $('#cover');
+var $editDialog = $('#edit-dialog');
+var $editSubmit = $('#edit-dialog-submit');
+var $editCancel = $('#edit-dialog-cancel');
+var $confirmDialog = $('#confirm-dialog');
+var $confirmSubmit = $('#confirm-dialog-submit');
+var $confirmCancel = $('#confirm-dialog-cancel');
+
+var os = (navigator.platform.toLowerCase().match(/mac|win|linux/i) || ['other'])[0];
 
 const testData = [
         {
@@ -171,11 +184,21 @@ const testData = [
         }
     });
 
-    window.addEventListener('scroll', (event) => {
+    window.addEventListener('scroll', () => {
         localStorage.scrollTop = $(window).scrollTop();
     });
 
     loadBookmarks();
+
+    if (os == 'mac') {
+        $editCancel.css({
+            order: 0
+        });
+
+        $confirmCancel.css({
+            order: 0
+        });
+    }
 })(window);
 
 function isBackgroundTab(event) {
@@ -190,7 +213,7 @@ function loadBookmarks() {
 }
 
 function isFolder(node) {
-    return typeof node.url == 'undefined';
+    return node.dateGroupModified || typeof node.url == 'undefined';
 }
 
 function displayBookmarks(bookmarks) {
@@ -210,6 +233,9 @@ function displayBookmarks(bookmarks) {
                 setTimeout(() => $li.find('#favicon')
                     .replaceWith('<img class="favicon" src="' + favicon + '" alt="">'), 100);
                 title += '\n\n' + node.url;
+            } else if (isFolder(node) && node.children.length == 0) {
+                $li.find('.jqtree-title')
+                    .before('<i class="favicon fas fa-folder"></i>');
             }
             $li.find('.jqtree-title').attr({'title': title});
         },
@@ -234,17 +260,34 @@ function displayBookmarks(bookmarks) {
     var menu = $tree.jqTreeContextMenu((node) => {
         return isFolder(node) ? $('#menu-folder') : $('#menu-bookmark');
     }, {
-        "edit": function (node) { alert('Edit node: ' + node.name); },
-        "delete": function (node) { alert('Delete node: ' + node.name); },
-        "add": function (node) { alert('Add node: ' + node.name); }
+        "new_window": (node) => { openBookmarkInNewWindow(node.url, false); },
+        "incognito_window": (node) => { openBookmarkInNewWindow(node.url, true); },
+        "edit": (node) => { showEditNodeDialog(node); },
+        "delete": (node) => { 
+            if (isFolder(node) && node.children.length > 0) {
+                var html = 'Folder <b>"' + node.name + '"</b> contains <b>' + node.children.length + '</b> item(s). Are you sure you want to delete?';
+                showConfirmDialog(html, () => {
+                    removeTree(node);                     
+                });
+            } else {
+                removeNode(node); 
+            }
+        },
+        "open_all": (node) => { openBookmarksFolder(node); },
+        "open_all_new_window": (node) => { openBookmarksFolder(node, true, false); },
+        "open_all_incognito_window": (node) => { openBookmarksFolder(node, true, true); }
     });
 
     menu.disable('Bookmarks Bar', ['edit', 'delete']);
     menu.disable('Other Bookmarks', ['edit', 'delete']);
     menu.disable('Mobile Bookmarks', ['edit', 'delete']);
 
-    $('html,body').scrollTop(localStorage.scrollTop);
+    restoreScrollPosition();
 };
+
+function restoreScrollPosition() {
+    $('html,body').scrollTop(localStorage.scrollTop);
+}
 
 function closeOpenNodes(toggleNode) {
     var openNodes = $tree.tree('getSelectedNodes');
@@ -273,4 +316,235 @@ function closeOpenChildNodes(children) {
             }
         }
     }
+}
+
+function showEditNodeDialog(node, create) {
+    var dialogTitle = create ? "Add bookmark" : isFolder(node) ? 'Edit folder' : 'Edit bookmark';
+    $('#edit-title').text(dialogTitle);
+    $('#url').show();
+
+    if (create) {
+        $('#title').val("");
+        $('#url').val("");
+    } else {
+        $('#title').val(node.name);
+        isFolder(node) ? $('#url').hide() : $('#url').val(node.url);
+    }
+    $body.addClass('edit-background');
+    $editDialog
+        .fadeIn(200)
+        .css({
+            top: '-150px'
+        })
+        .animate({
+            top: 0
+        }, 150);
+    $cover
+        .delay(100)
+        .fadeIn(250)
+        .css({
+            left: 0
+        });
+
+    disableScroll();
+
+    $body.bind('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            hideEditNodeDialog();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            $editSubmit.click();
+        }
+    });
+
+    $editSubmit.on('click', (e) => {
+        e.preventDefault();
+        node.name = $('#title').val();
+        if (!isFolder(node)) {
+            node.url = $('#url').val();
+        }
+        saveEdits(node);
+    });
+
+    $editCancel.on('click', (e) => {
+        e.preventDefault();
+        hideEditNodeDialog();
+    });
+
+    $cover.on('click', () => { hideEditNodeDialog(); });
+}
+
+function hideEditNodeDialog() {
+    $cover
+        .fadeOut(100)
+        .css({
+            left: '-100%'
+        });
+    $editDialog
+        .animate({
+            top: '-100%'
+        }, 150, () => { $body.removeClass('edit-background'); })
+        .fadeOut(100);
+
+    enableScroll();
+
+    $body.unbind('keydown');
+    $editSubmit.unbind('click');
+    $editCancel.unbind('click');
+    $cover.unbind('click');
+}
+
+function showConfirmDialog(html, callback) {
+    $('#confirm-dialog-text').html(html);
+    $body.addClass('confirm-background');
+
+    $confirmDialog
+        .fadeIn(200)
+        .css({
+            top: '-150px'
+        })
+        .animate({
+            top: 0
+        }, 150);
+    $cover
+        .delay(100)
+        .fadeIn(250)
+        .css({
+            left: 0
+        });
+
+    disableScroll();
+
+    $body.bind('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            hideConfirmDialog();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            $confirmSubmit.click();
+        }
+    });
+
+    $confirmSubmit.on('click', (e) => {
+        e.preventDefault();
+        hideConfirmDialog()
+        callback();
+    });
+
+    $confirmCancel.on('click', (e) => {
+        e.preventDefault();
+        hideConfirmDialog();
+    });
+
+    $cover.on('click', () => { hideConfirmDialog(); });
+}
+
+function hideConfirmDialog() {
+    $cover
+        .fadeOut(100)
+        .css({
+            left: '-100%'
+        });
+    $confirmDialog
+        .animate({
+            top: '-100%'
+        }, 150, () => { $body.removeClass('confirm-background'); })
+        .fadeOut(100);
+
+    enableScroll();
+
+    $body.unbind('keydown');
+    $confirmSubmit.unbind('click');
+    $confirmCancel.unbind('click');
+    $cover.unbind('click');
+}
+
+function disableScroll() { 
+    // Get the current page scroll position 
+    scrollTop = window.pageYOffset || document.documentElement.scrollTop; 
+    scrollLeft = window.pageXOffset || document.documentElement.scrollLeft, 
+  
+    // if any scroll is attempted, set this to the previous value 
+    window.onscroll = function() { 
+        window.scrollTo(scrollLeft, scrollTop); 
+    }; 
+    $body.addClass('hide-scrollbar');
+}
+
+function enableScroll() { 
+    window.onscroll = function() {}; 
+    $body.removeClass('hide-scrollbar');
+}
+
+function saveEdits(node) {
+    hideEditNodeDialog();
+    $tree.tree('updateNode', node, {
+        id: node.id,
+        name: node.name,
+        url: node.url
+    });
+    chrome.bookmarks.update(node.id, {title: node.name, url: node.url});
+}
+
+function removeNode(node) {
+    chrome.bookmarks.remove(node.id, () => {
+        $tree.tree('removeNode', node);
+    });
+}
+
+function removeTree(node) {
+    chrome.bookmarks.removeTree(node.id, () => {
+        $tree.tree('removeNode', node);
+    });
+}
+
+function openBookmarkInNewWindow(url, incognito) {
+    chrome.windows.create({
+        url: url,
+        incognito: incognito
+    });
+}
+
+function openBookmarksFolder(folder, newWindow, incognito) {
+    chrome.bookmarks.getChildren(folder.id, (children) => {
+        var urls = children
+            .filter(child => typeof child.url != 'undefined')
+            .map(child => child.url);
+        
+        if (urls.length > openBookmarksLimit) {
+            var html = "Are you sure you want to open all <b>" + urls.length + "</b>"
+                + (newWindow ?
+                    incognito
+                        ? " bookmarks in a new incognito window"
+                        : " bookmarks in a new window?"
+                    : " bookmarks?");
+            showConfirmDialog(html, () => {
+                newWindow 
+                    ? openBookmarksFolderNewWindowConfirmed(urls, incognito)
+                    : openBookmarksFolderConfirmed(urls);
+            });
+        } else {
+            newWindow
+                ? openBookmarksFolderNewWindowConfirmed(urls, incognito)
+                : openBookmarksFolderConfirmed(urls);
+        }
+        
+    });
+}
+
+function openBookmarksFolderConfirmed(urls) {
+    for (var i = 0; i < urls.length; i++){
+        chrome.tabs.create({
+            url: urls[i],
+            selected: i == 0
+        });
+    }
+}
+
+function openBookmarksFolderNewWindowConfirmed(urls, incognito) {
+    chrome.windows.create({
+        url: urls,
+        incognito: incognito
+    });
 }

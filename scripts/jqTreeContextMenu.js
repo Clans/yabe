@@ -76,7 +76,7 @@
 			}
 
 			// Must call show before we set the offset (offset can not be set on display: none elements).
-			$menuEl.fadeIn(200);
+			$menuEl.fadeIn(100);
 
 			$menuEl.offset({ left: x, top: y });
 

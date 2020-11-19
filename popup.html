@@ -7,26 +7,44 @@
 
 <body>
   <div id="tree1"></div>
-  <div id="editdialog"></div>
 
   <ul id="menu-folder" class="context-menu">
-    <!-- <li><a href="#open_all"><i class="menuicon fas fa-caret-square-right"></i>Open All Bookmarks</a></li>
+    <li><a href="#open_all"><i class="menuicon fas fa-caret-square-right"></i>Open All Bookmarks</a></li>
     <li><a href="#open_all_new_window"><i class="menuicon fas fa-external-link-square-alt"></i>Open All Bookmarks In New Window</a></li>
     <li><a href="#open_all_incognito_window"><i class="menuicon fas fa-user-secret"></i>Open All Bookmarks In Incognito Window</a></li>
-    <li class="divider"></li> -->
-    <li><a href="#add"><i class="menuicon fas fa-plus-square"></i>Add Bookmark</a></li>
+    <li class="divider"></li>
+    <!-- <li><a href="#add"><i class="menuicon fas fa-plus-square"></i>Add Bookmark</a></li> -->
     <li><a href="#edit"><i class="menuicon fas fa-pen-square"></i>Edit Folder</a></li>
     <li><a href="#delete"><i class="menuicon fas fa-trash-alt"></i>Delete Folder</a></li>
   </ul>
 
   <ul id="menu-bookmark" class="context-menu">
-    <li><a href="#current_tab"><i class="menuicon fas fa-caret-square-right"></i>Open In Current Tab</a></li>
+    <!-- <li><a href="#current_tab"><i class="menuicon fas fa-caret-square-right"></i>Open In Current Tab</a></li> -->
     <li><a href="#new_window"><i class="menuicon fas fa-external-link-square-alt"></i>Open In New Window</a></li>
     <li><a href="#incognito_window"><i class="menuicon fas fa-user-secret"></i>Open In Incognito Window</a></li>
     <li class="divider"></li>
     <li><a href="#edit"><i class="menuicon fas fa-pen-square"></i>Edit Bookmark</a></li>
     <li><a href="#delete"><i class="menuicon fas fa-trash-alt"></i>Delete Bookmark</a></li>
   </ul>
+
+  <div id="cover"></div>
+  <div id="edit-dialog" class="dialog">
+    <div id="edit-title"></div>
+    <input type="text" id="title" name="bookmark-title" autocomplete="off" placeholder="Bookmark title...">
+    <input type="text" id="url" name="bookmark-url" autocomplete="off" placeholder="Bookmark URL...">
+    <div class="button-wrapper">
+      <a href="#" id="edit-dialog-submit" class="button button-submit">Save</a>
+      <a href="#" id="edit-dialog-cancel" class="button button-cancel">Cancel</a>
+    </div>
+  </div>
+  
+  <div id="confirm-dialog" class="dialog">
+    <p id="confirm-dialog-text"></p>
+    <div class="button-wrapper">
+      <a href="#" id="confirm-dialog-submit" class="button button-submit">OK</a>
+      <a href="#" id="confirm-dialog-cancel" class="button button-cancel">Cancel</a>
+    </div>
+  </div>
 
   <script defer src="scripts/fontawesome.min.js"></script>
   <script src="scripts/jquery-3.5.1.min.js"></script>
