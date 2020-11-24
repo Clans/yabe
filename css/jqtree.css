@@ -79,9 +79,16 @@ ul.jqtree-tree .jqtree-title {
     white-space: nowrap;
 }
 
-.fa-folder-plus, .fa-folder-minus {
-    font-size: 16px;
-    color: #646464;
+.folder-plus, .folder-minus {
+    vertical-align: middle;
+    filter: invert(41%) sepia(0%) saturate(1247%) hue-rotate(165deg) brightness(94%) contrast(94%);
+}
+
+.folder-empty {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    filter: invert(41%) sepia(0%) saturate(1247%) hue-rotate(165deg) brightness(94%) contrast(94%);
 }
 
 ul.jqtree-tree .jqtree-title.jqtree-title-folder {
@@ -292,6 +299,10 @@ span.jqtree-dragging {
 
 .menuicon {
     margin-right: 10px;
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+    filter: invert(41%) sepia(0%) saturate(1247%) hue-rotate(165deg) brightness(94%) contrast(94%);
 }
 
 .dialog {
@@ -354,7 +365,6 @@ span.jqtree-dragging {
 }
 
 input[type=text], select {
-    /* max-width: 350px; */
     width: 100%;
     padding: 8px;
     border: 1px solid #ccc;
@@ -364,10 +374,15 @@ input[type=text], select {
     color: #646464;
 }
 
+.input-error {
+    outline-color: red;
+}
+
 .button-wrapper {
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
+    margin-top: 4px;
 }
 
 .button {
@@ -378,7 +393,6 @@ input[type=text], select {
     padding: 8px 0;
     border-radius: 4px;
     cursor: pointer;
-    margin-top: 4px;
     text-decoration: none;
     font-size: 14px;
     margin-left: 4px;
@@ -417,4 +431,11 @@ input[type=text], select {
 
 .hide-scrollbar::-webkit-scrollbar {
     display: none;
+}
+
+.error {
+    margin-right: auto;
+    color: red;
+    font-size: 10px;
+    margin-left: 1px;
 }
