@@ -7,26 +7,50 @@
 
 <body>
   <div id="tree1"></div>
-  <div id="editdialog"></div>
 
   <ul id="menu-folder" class="context-menu">
-    <li><a href="#add">Add</a></li>
-    <li><a href="#edit">Edit</a></li>
+    <li><a href="#open_all"><img class="menuicon" src="images/caret-square-right.svg">Open All Bookmarks</a></li>
+    <li><a href="#open_all_new_window"><img class="menuicon" src="images/external-link-square-alt.svg">Open All Bookmarks In New Window</a></li>
+    <li><a href="#open_all_incognito_window"><img class="menuicon" src="images/user-secret.svg">Open All Bookmarks In Incognito Window</a></li>
     <li class="divider"></li>
-    <li><a href="#delete">Delete</a></li>
+    <!-- <li><a href="#add"><i class="menuicon fas fa-plus-square"></i>Add Bookmark</a></li> -->
+    <li><a href="#edit"><img class="menuicon" src="images/pen-square.svg">Edit Folder</a></li>
+    <li><a href="#delete"><img class="menuicon" src="images/trash-alt.svg">Delete Folder</a></li>
   </ul>
 
   <ul id="menu-bookmark" class="context-menu">
-    <li><a href="#edit">Edit</a></li>
+    <!-- <li><a href="#current_tab"><i class="menuicon fas fa-caret-square-right"></i>Open In Current Tab</a></li> -->
+    <li><a href="#new_window"><img class="menuicon" src="images/external-link-square-alt.svg">Open In New Window</a></li>
+    <li><a href="#incognito_window"><img class="menuicon" src="images/user-secret.svg">Open In Incognito Window</a></li>
     <li class="divider"></li>
-    <li><a href="#delete">Delete</a></li>
+    <li><a href="#edit"><img class="menuicon" src="images/pen-square.svg">Edit Bookmark</a></li>
+    <li><a href="#delete"><img class="menuicon" src="images/trash-alt.svg">Delete Bookmark</a></li>
   </ul>
 
-  <script defer src="scripts/fontawesome.min.js"></script>
-  <script src="scripts/jquery-3.5.1.min.js"></script>
-  <script src="scripts/tree.jquery-1.5.1.js"></script>
-  <script src="popup.js"></script>
-  <script src="scripts/jqTreeContextMenu.js"></script>
+  <div id="cover"></div>
+  <div id="edit-dialog" class="dialog">
+    <div id="edit-title"></div>
+    <input type="text" id="title" name="bookmark-title" autocomplete="off" placeholder="Bookmark title...">
+    <input type="text" id="url" name="bookmark-url" autocomplete="off" placeholder="Bookmark URL...">
+    <div class="button-wrapper">
+      <span id="error" class="error">Invalid URL</span>
+      <a href="#" id="edit-dialog-submit" class="button button-submit">Save</a>
+      <a href="#" id="edit-dialog-cancel" class="button button-cancel">Cancel</a>
+    </div>
+  </div>
+  
+  <div id="confirm-dialog" class="dialog">
+    <p id="confirm-dialog-text"></p>
+    <div class="button-wrapper">
+      <a href="#" id="confirm-dialog-submit" class="button button-submit">OK</a>
+      <a href="#" id="confirm-dialog-cancel" class="button button-cancel">Cancel</a>
+    </div>
+  </div>
+
+  <script type="text/javascript" src="scripts/jquery-3.5.1.min.js"></script>
+  <script type="text/javascript" src="scripts/tree.jquery-1.5.1.js"></script>
+  <script type="text/javascript" src="popup.js"></script>
+  <script type="text/javascript" src="scripts/jqTreeContextMenu.js"></script>
 </body>
 
 </html>
