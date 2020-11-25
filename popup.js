@@ -223,6 +223,9 @@ const testData = [
             onCreateLi: function (node, $li, is_selected) {
                 var title = node.name;
                 if (!isFolder(node)) {
+                    if (!node.name || !node.name.trim()) { 
+                        $li.find('.jqtree-title').text(node.url); 
+                    }
                     var favicon = 'chrome://favicon/size/16@2x/' + node.url;
                     setTimeout(() => {
                         $li.find('.jqtree-title').before('<div id="favicon" class="favicon">');
@@ -231,7 +234,7 @@ const testData = [
                             'background-size': 'contain'
                         });
                     }, 100);
-                    title += '\n\n' + node.url;
+                    title += node.name ? ('\n\n' + node.url) : node.url;
                 } else if (isFolder(node) && node.children.length == 0) {
                     $li.find('.jqtree-title')
                         .before('<object class="folder-empty" data="images/folder-empty.svg" width="16" height="16"></object>');
