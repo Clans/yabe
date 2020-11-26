@@ -509,6 +509,7 @@ const testData = [
     function removeNode(node) {
         chrome.bookmarks.remove(node.id, () => {
             $tree.tree('removeNode', node);
+            restoreScrollPosition();
         });
     }
 
