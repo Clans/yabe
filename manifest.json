@@ -1,6 +1,6 @@
 {
     "name": "YABE - Yet Another Bookmarks Extension",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "description": "A nicer bookmarks popup",
     "permissions": ["bookmarks", "storage", "chrome://favicon/"],
     "background": {
