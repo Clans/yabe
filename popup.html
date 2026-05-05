@@ -6,6 +6,21 @@
 </head>
 
 <body>
+  <header id="popup-header" class="popup-header">
+    <div id="header-summary" class="header-summary">
+      <span id="bookmark-count">0 Bookmarks</span>
+      <button type="button" id="search-open" class="header-icon-button" aria-label="Search bookmarks">
+        <img src="images/search.svg" alt="">
+      </button>
+    </div>
+    <form id="search-form" class="header-search" role="search">
+      <input type="search" id="bookmark-search" autocomplete="off" aria-label="Search bookmarks" placeholder="Search bookmarks">
+      <button type="button" id="search-close" class="search-close" aria-label="Close search">
+        <img src="images/xmark.svg" alt="">
+      </button>
+    </form>
+  </header>
+
   <div id="tree1"></div>
 
   <ul id="menu-folder" class="context-menu">

@@ -1,10 +1,15 @@
 const openBookmarksLimit = 8;
 
-var bkg = chrome.extension.getBackgroundPage();
 var bookmarks = [];
 var localStorage = window.localStorage;
 var $body = $(document.body);
 var $tree = $('#tree1');
+var $popupHeader = $('#popup-header');
+var $bookmarkCount = $('#bookmark-count');
+var $searchOpen = $('#search-open');
+var $searchForm = $('#search-form');
+var $bookmarkSearch = $('#bookmark-search');
+var $searchClose = $('#search-close');
 
 var $cover = $('#cover');
 var $editDialog = $('#edit-dialog');
@@ -15,6 +20,8 @@ var $confirmSubmit = $('#confirm-dialog-submit');
 var $confirmCancel = $('#confirm-dialog-cancel');
 
 var os = (navigator.platform.toLowerCase().match(/mac|win|linux/i) || ['other'])[0];
+var totalBookmarks = 0;
+var bookmarksLoaded = false;
 
 const testData = [
     {
@@ -161,7 +168,7 @@ const testData = [
     $tree.on('tree.open', (event) => {
         if (!$tree.tree('isDragging')) {
             closeOpenNodes(event.node);
-            $tree.tree('scrollToNode', event.node)
+            scrollToNode(event.node);
         }
         $tree.tree('addToSelection', event.node, false);
     });
@@ -185,6 +192,7 @@ const testData = [
         localStorage.scrollTop = $(window).scrollTop();
     });
 
+    setupSearchHeader();
     loadBookmarks();
 
     if (os == 'mac') {
@@ -203,8 +211,14 @@ const testData = [
 
     function loadBookmarks() {
         chrome.bookmarks.getTree(function (tree) {
-            var data = tree[0].children;
-            displayBookmarks(data);
+            bookmarks = tree[0].children || [];
+            totalBookmarks = countBookmarks(bookmarks);
+            updateBookmarkCount();
+            displayBookmarks(bookmarks);
+
+            if ($bookmarkSearch.val().trim()) {
+                applyBookmarkSearch();
+            }
         });
     }
 
@@ -212,9 +226,186 @@ const testData = [
         return node.dateGroupModified || typeof node.url == 'undefined';
     }
 
-    function displayBookmarks(bookmarks) {
+    function setupSearchHeader() {
+        $searchOpen.on('click', (event) => {
+            event.preventDefault();
+            openSearch();
+        });
+
+        $searchClose.on('click', (event) => {
+            event.preventDefault();
+            closeSearch();
+        });
+
+        $searchForm.on('submit', (event) => {
+            event.preventDefault();
+        });
+
+        $bookmarkSearch.on('input', () => {
+            applyBookmarkSearch();
+        });
+
+        $bookmarkSearch.on('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeSearch();
+            }
+        });
+    }
+
+    function openSearch() {
+        $popupHeader.addClass('searching');
+        window.setTimeout(() => {
+            $bookmarkSearch.trigger('focus');
+        }, 180);
+    }
+
+    function closeSearch() {
+        $bookmarkSearch.val('');
+        $popupHeader.removeClass('searching');
+        renderBookmarkTree(bookmarks);
+        restoreScrollPosition();
+        $searchOpen.trigger('focus');
+    }
+
+    function updateBookmarkCount() {
+        var suffix = totalBookmarks == 1 ? 'Bookmark' : 'Bookmarks';
+        $bookmarkCount.text(totalBookmarks + ' ' + suffix);
+    }
+
+    function applyBookmarkSearch() {
+        if (!bookmarksLoaded) {
+            return;
+        }
+
+        var query = $bookmarkSearch.val().trim().toLowerCase();
+        if (!query) {
+            renderBookmarkTree(bookmarks);
+            restoreScrollPosition();
+            return;
+        }
+
+        renderBookmarkTree(findMatchingBookmarks(bookmarks, query));
+        $('html,body').scrollTop(0);
+    }
+
+    function renderBookmarkTree(data) {
+        if (bookmarksLoaded) {
+            $tree.tree('loadData', data);
+        }
+    }
+
+    function countBookmarks(nodes) {
+        var count = 0;
+        for (var i = 0; i < nodes.length; i++) {
+            if (typeof nodes[i].url != 'undefined') {
+                count++;
+            } else if (nodes[i].children) {
+                count += countBookmarks(nodes[i].children);
+            }
+        }
+        return count;
+    }
+
+    function findMatchingBookmarks(nodes, query) {
+        var matches = [];
+        collectMatchingBookmarks(nodes, query, matches);
+        return matches;
+    }
+
+    function collectMatchingBookmarks(nodes, query, matches) {
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            if (typeof node.url != 'undefined' && bookmarkMatches(node, query)) {
+                matches.push(cloneBookmark(node));
+            }
+
+            if (node.children) {
+                collectMatchingBookmarks(node.children, query, matches);
+            }
+        }
+    }
+
+    function bookmarkMatches(node, query) {
+        var title = (node.title || node.name || '').toLowerCase();
+        var url = (node.url || '').toLowerCase();
+        return title.indexOf(query) > -1 || url.indexOf(query) > -1;
+    }
+
+    function cloneBookmark(node) {
+        var bookmark = {};
+        for (var key in node) {
+            if (Object.prototype.hasOwnProperty.call(node, key) && key != 'children') {
+                bookmark[key] = node[key];
+            }
+        }
+        return bookmark;
+    }
+
+    function isSearchOpen() {
+        return $popupHeader.hasClass('searching');
+    }
+
+    function refreshSearchResults() {
+        if (isSearchOpen()) {
+            applyBookmarkSearch();
+        }
+    }
+
+    function findCachedNode(id, nodes) {
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].id == id) {
+                return nodes[i];
+            }
+
+            if (nodes[i].children) {
+                var child = findCachedNode(id, nodes[i].children);
+                if (child) {
+                    return child;
+                }
+            }
+        }
+        return null;
+    }
+
+    function updateCachedNode(result) {
+        var cachedNode = findCachedNode(result.id, bookmarks);
+        if (!cachedNode) {
+            return;
+        }
+
+        cachedNode.title = result.title;
+        if (typeof result.url != 'undefined') {
+            cachedNode.url = result.url;
+        } else {
+            delete cachedNode.url;
+        }
+    }
+
+    function removeCachedNode(id) {
+        if (removeCachedNodeById(id, bookmarks)) {
+            totalBookmarks = countBookmarks(bookmarks);
+            updateBookmarkCount();
+        }
+    }
+
+    function removeCachedNodeById(id, nodes) {
+        for (var i = nodes.length - 1; i >= 0; i--) {
+            if (nodes[i].id == id) {
+                nodes.splice(i, 1);
+                return true;
+            }
+
+            if (nodes[i].children && removeCachedNodeById(id, nodes[i].children)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function displayBookmarks(data) {
         $tree.tree({
-            data: bookmarks,
+            data: data,
             // dragAndDrop: true,
             saveState: true,
             selectable: false,
@@ -226,7 +417,7 @@ const testData = [
                     if (!node.name || !node.name.trim()) { 
                         $li.find('.jqtree-title').text(node.url); 
                     }
-                    var favicon = 'chrome://favicon/size/16@2x/' + node.url;
+                    var favicon = faviconUrl(node.url);
                     setTimeout(() => {
                         $li.find('.jqtree-title').before('<div id="favicon" class="favicon">');
                         $li.find('#favicon').css({
@@ -284,11 +475,41 @@ const testData = [
         menu.disable('Other Bookmarks', ['edit', 'delete']);
         menu.disable('Mobile Bookmarks', ['edit', 'delete']);
 
+        bookmarksLoaded = true;
         restoreScrollPosition();
     }
 
     function restoreScrollPosition() {
         $('html,body').scrollTop(localStorage.scrollTop);
+    }
+
+    function headerOffset() {
+        return ($popupHeader.outerHeight() || 0) + 'px';
+    }
+
+    function scrollToNode(node) {
+        $tree.tree('scrollToNode', node);
+
+        window.requestAnimationFrame(() => {
+            var headerHeight = $popupHeader.outerHeight() || 0;
+            var nodeOffset = $(node.element).offset();
+            if (!nodeOffset) {
+                return;
+            }
+
+            var scrollTop = $(window).scrollTop();
+            var nodeTop = nodeOffset.top - scrollTop;
+            if (nodeTop < headerHeight) {
+                $('html,body').scrollTop(Math.max(scrollTop - (headerHeight - nodeTop), 0));
+            }
+        });
+    }
+
+    function faviconUrl(pageUrl) {
+        var url = new URL(chrome.runtime.getURL('/_favicon/'));
+        url.searchParams.set('pageUrl', pageUrl);
+        url.searchParams.set('size', '32');
+        return url.toString();
     }
 
     function closeOpenNodes(toggleNode) {
@@ -342,7 +563,7 @@ const testData = [
                 top: '-150px'
             })
             .animate({
-                top: 0
+                top: headerOffset()
             }, 150);
         $cover
             .delay(100)
@@ -422,7 +643,7 @@ const testData = [
                 top: '-150px'
             })
             .animate({
-                top: 0
+                top: headerOffset()
             }, 150);
         $cover
             .delay(100)
@@ -503,12 +724,16 @@ const testData = [
                 name: result.title,
                 url: result.url
             });
+            updateCachedNode(result);
+            refreshSearchResults();
         });
     }
 
     function removeNode(node) {
         chrome.bookmarks.remove(node.id, () => {
             $tree.tree('removeNode', node);
+            removeCachedNode(node.id);
+            refreshSearchResults();
             restoreScrollPosition();
         });
     }
@@ -516,6 +741,8 @@ const testData = [
     function removeTree(node) {
         chrome.bookmarks.removeTree(node.id, () => {
             $tree.tree('removeNode', node);
+            removeCachedNode(node.id);
+            refreshSearchResults();
         });
     }
 
@@ -557,7 +784,7 @@ const testData = [
         for (var i = 0; i < urls.length; i++) {
             chrome.tabs.create({
                 url: urls[i],
-                selected: i == 0
+                active: i == 0
             });
         }
     }
