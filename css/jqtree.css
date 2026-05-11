@@ -348,6 +348,7 @@ span.jqtree-dragging {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
+    object-fit: contain;
 }
 
 .context-menu {

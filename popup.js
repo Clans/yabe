@@ -22,6 +22,8 @@ var $confirmCancel = $('#confirm-dialog-cancel');
 var os = (navigator.platform.toLowerCase().match(/mac|win|linux/i) || ['other'])[0];
 var totalBookmarks = 0;
 var bookmarksLoaded = false;
+var bookmarkNodeById = {};
+var savedOpenNodeIds = {};
 
 const testData = [
     {
@@ -166,6 +168,7 @@ const testData = [
     });
 
     $tree.on('tree.open', (event) => {
+        hydrateFolderNode(event.node);
         if (!$tree.tree('isDragging')) {
             closeOpenNodes(event.node);
             scrollToNode(event.node);
@@ -193,7 +196,7 @@ const testData = [
     });
 
     setupSearchHeader();
-    loadBookmarks();
+    scheduleBookmarkLoad();
 
     if (os == 'mac') {
         $editCancel.css({
@@ -209,10 +212,21 @@ const testData = [
         return (event.metaKey && event.button == 0) || (event.ctrlKey && event.button == 0);
     }
 
+    function scheduleBookmarkLoad() {
+        if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(() => {
+                window.setTimeout(loadBookmarks, 0);
+            });
+        } else {
+            window.setTimeout(loadBookmarks, 0);
+        }
+    }
+
     function loadBookmarks() {
         chrome.bookmarks.getTree(function (tree) {
             bookmarks = tree[0].children || [];
-            totalBookmarks = countBookmarks(bookmarks);
+            rebuildBookmarkIndex();
+            savedOpenNodeIds = getSavedOpenNodeIds();
             updateBookmarkCount();
             displayBookmarks(bookmarks);
 
@@ -263,7 +277,7 @@ const testData = [
     function closeSearch() {
         $bookmarkSearch.val('');
         $popupHeader.removeClass('searching');
-        renderBookmarkTree(bookmarks);
+        renderBookmarkTree(bookmarks, false);
         restoreScrollPosition();
         $searchOpen.trigger('focus');
     }
@@ -280,24 +294,29 @@ const testData = [
 
         var query = $bookmarkSearch.val().trim().toLowerCase();
         if (!query) {
-            renderBookmarkTree(bookmarks);
+            renderBookmarkTree(bookmarks, false);
             restoreScrollPosition();
             return;
         }
 
-        renderBookmarkTree(findMatchingBookmarks(bookmarks, query));
+        renderBookmarkTree(findMatchingBookmarks(bookmarks, query), true);
         $('html,body').scrollTop(0);
     }
 
-    function renderBookmarkTree(data) {
+    function renderBookmarkTree(data, isSearchResults) {
         if (bookmarksLoaded) {
-            $tree.tree('loadData', data);
+            if (!isSearchResults) {
+                savedOpenNodeIds = getSavedOpenNodeIds();
+            }
+            $tree.tree('loadData', isSearchResults ? data : buildLazyTreeData(data, savedOpenNodeIds));
+            hydrateOpenDeferredFolders();
         }
     }
 
     function countBookmarks(nodes) {
         var count = 0;
         for (var i = 0; i < nodes.length; i++) {
+            bookmarkNodeById[nodes[i].id] = nodes[i];
             if (typeof nodes[i].url != 'undefined') {
                 count++;
             } else if (nodes[i].children) {
@@ -305,6 +324,31 @@ const testData = [
             }
         }
         return count;
+    }
+
+    function rebuildBookmarkIndex() {
+        bookmarkNodeById = {};
+        totalBookmarks = countBookmarks(bookmarks);
+    }
+
+    function getSavedOpenNodeIds() {
+        var savedOpenNodes = {};
+        var state;
+
+        try {
+            state = JSON.parse(localStorage.getItem('tree') || '{}');
+        } catch (error) {
+            return savedOpenNodes;
+        }
+
+        if (!state.open_nodes || !state.open_nodes.length) {
+            return savedOpenNodes;
+        }
+
+        for (var i = 0; i < state.open_nodes.length; i++) {
+            savedOpenNodes[state.open_nodes[i]] = true;
+        }
+        return savedOpenNodes;
     }
 
     function findMatchingBookmarks(nodes, query) {
@@ -342,6 +386,77 @@ const testData = [
         return bookmark;
     }
 
+    function buildLazyTreeData(nodes, openNodeIds) {
+        var lazyNodes = [];
+        for (var i = 0; i < nodes.length; i++) {
+            lazyNodes.push(buildLazyTreeNode(nodes[i], openNodeIds || {}));
+        }
+        return lazyNodes;
+    }
+
+    function buildLazyTreeNode(node, openNodeIds) {
+        var lazyNode = cloneBookmark(node);
+        if (node.children) {
+            if (!node.children.length) {
+                lazyNode.children = [];
+            } else if (openNodeIds[node.id]) {
+                lazyNode.children = buildLazyTreeData(node.children, openNodeIds);
+            } else {
+                lazyNode.children = [createDeferredChildrenNode(node.id)];
+            }
+        }
+        return lazyNode;
+    }
+
+    function createDeferredChildrenNode(parentId) {
+        return {
+            id: '__deferred_children__' + parentId,
+            parentId: parentId,
+            title: '',
+            isDeferredChildren: true
+        };
+    }
+
+    function hasDeferredChildren(node) {
+        return node.children
+            && node.children.length == 1
+            && node.children[0].isDeferredChildren;
+    }
+
+    function hydrateFolderNode(node) {
+        if (!hasDeferredChildren(node)) {
+            return;
+        }
+
+        var cachedNode = findCachedNode(node.id);
+        var children = cachedNode && cachedNode.children ? cachedNode.children : [];
+        $tree.tree('loadData', buildLazyTreeData(children, savedOpenNodeIds), node);
+    }
+
+    function hydrateOpenDeferredFolders() {
+        var didHydrate = true;
+        while (didHydrate) {
+            var tree = $tree.tree('getTree');
+            var nodes = [];
+            didHydrate = false;
+            if (!tree) {
+                return;
+            }
+
+            tree.iterate((node) => {
+                if (node.is_open && hasDeferredChildren(node)) {
+                    nodes.push(node);
+                }
+                return true;
+            });
+
+            for (var i = 0; i < nodes.length; i++) {
+                hydrateFolderNode(nodes[i]);
+                didHydrate = true;
+            }
+        }
+    }
+
     function isSearchOpen() {
         return $popupHeader.hasClass('searching');
     }
@@ -352,24 +467,12 @@ const testData = [
         }
     }
 
-    function findCachedNode(id, nodes) {
-        for (var i = 0; i < nodes.length; i++) {
-            if (nodes[i].id == id) {
-                return nodes[i];
-            }
-
-            if (nodes[i].children) {
-                var child = findCachedNode(id, nodes[i].children);
-                if (child) {
-                    return child;
-                }
-            }
-        }
-        return null;
+    function findCachedNode(id) {
+        return bookmarkNodeById[id] || null;
     }
 
     function updateCachedNode(result) {
-        var cachedNode = findCachedNode(result.id, bookmarks);
+        var cachedNode = findCachedNode(result.id);
         if (!cachedNode) {
             return;
         }
@@ -384,7 +487,7 @@ const testData = [
 
     function removeCachedNode(id) {
         if (removeCachedNodeById(id, bookmarks)) {
-            totalBookmarks = countBookmarks(bookmarks);
+            rebuildBookmarkIndex();
             updateBookmarkCount();
         }
     }
@@ -403,14 +506,23 @@ const testData = [
         return false;
     }
 
+    function getFolderChildCount(node) {
+        var cachedNode = findCachedNode(node.id);
+        if (cachedNode && cachedNode.children) {
+            return cachedNode.children.length;
+        }
+        return node.children ? node.children.length : 0;
+    }
+
     function displayBookmarks(data) {
         $tree.tree({
-            data: data,
+            data: buildLazyTreeData(data, savedOpenNodeIds),
             // dragAndDrop: true,
             saveState: true,
+            slide: false,
             selectable: false,
-            closedIcon: $('<object class="folder-plus" data="images/folder-plus.svg" width="16" height="16"></object>'),
-            openedIcon: $('<object class="folder-plus" data="images/folder-minus.svg" width="16" height="16" ></object>'),
+            closedIcon: $('<img class="folder-plus" src="images/folder-plus.svg" width="16" height="16" alt="">'),
+            openedIcon: $('<img class="folder-minus" src="images/folder-minus.svg" width="16" height="16" alt="">'),
             onCreateLi: function (node, $li, is_selected) {
                 var title = node.name;
                 if (!isFolder(node)) {
@@ -418,17 +530,17 @@ const testData = [
                         $li.find('.jqtree-title').text(node.url); 
                     }
                     var favicon = faviconUrl(node.url);
-                    setTimeout(() => {
-                        $li.find('.jqtree-title').before('<div id="favicon" class="favicon">');
-                        $li.find('#favicon').css({
-                            background: 'url(' + favicon + ') center no-repeat',
-                            'background-size': 'contain'
-                        });
-                    }, 100);
+                    $li.find('.jqtree-title').before($('<img>', {
+                        class: 'favicon',
+                        src: favicon,
+                        alt: '',
+                        loading: 'lazy',
+                        decoding: 'async'
+                    }));
                     title += node.name ? ('\n\n' + node.url) : node.url;
                 } else if (isFolder(node) && node.children.length == 0) {
                     $li.find('.jqtree-title')
-                        .before('<object class="folder-empty" data="images/folder-empty.svg" width="16" height="16"></object>');
+                        .before('<img class="folder-empty" src="images/folder-empty.svg" width="16" height="16" alt="">');
                 }
                 $li.find('.jqtree-title').attr({ 'title': title });
             },
@@ -457,8 +569,9 @@ const testData = [
             "incognito_window": (node) => { openBookmarkInNewWindow(node.url, true); },
             "edit": (node) => { showEditNodeDialog(node); },
             "delete": (node) => {
-                if (isFolder(node) && node.children.length > 0) {
-                    var html = 'Folder <b>"' + node.name + '"</b> contains <b>' + node.children.length + '</b> item(s). Are you sure you want to delete?';
+                var childCount = getFolderChildCount(node);
+                if (isFolder(node) && childCount > 0) {
+                    var html = 'Folder <b>"' + node.name + '"</b> contains <b>' + childCount + '</b> item(s). Are you sure you want to delete?';
                     showConfirmDialog(html, () => {
                         removeTree(node);
                     });
@@ -476,11 +589,20 @@ const testData = [
         menu.disable('Mobile Bookmarks', ['edit', 'delete']);
 
         bookmarksLoaded = true;
+        hydrateOpenDeferredFolders();
         restoreScrollPosition();
     }
 
     function restoreScrollPosition() {
-        $('html,body').scrollTop(localStorage.scrollTop);
+        var scrollTop = parseInt(localStorage.scrollTop, 10);
+        if (isNaN(scrollTop)) {
+            return;
+        }
+
+        $('html,body').scrollTop(scrollTop);
+        window.requestAnimationFrame(() => {
+            $('html,body').scrollTop(scrollTop);
+        });
     }
 
     function headerOffset() {
